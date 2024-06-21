@@ -1,0 +1,10 @@
+.DS_Store
+.AppleDouble
+.LSOverride
+
+.vscode/
+.vscode/*
+build/
+build/*
+resources/
+resources/*
