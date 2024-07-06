@@ -256,7 +256,6 @@ void File::cut(Vec2 &start, Vec2 &end) {
 void File::copy(Vec2 &start, Vec2 &end) {
     std::string s = "";
 
-    bool xtra_line = false;
     Vec2 upper;
     Vec2 lower;
     if (start.y <= end.y) {
@@ -277,8 +276,9 @@ void File::copy(Vec2 &start, Vec2 &end) {
             s += line;
         }
     }
-
-    s += "\n";
+    if (upper.y != lower.y) {
+        s += "\n";
+    }
     for (int i = upper.y + 1; i < lower.y; ++i) {
         l = lines[i];
         if (!l.cs.empty()) {
