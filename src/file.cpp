@@ -240,7 +240,7 @@ void File::delete_selection(Vec2 &start, Vec2 &end) {
         }
     }
 
-    if (start.y < end.y) {
+    if (start.y <= end.y) {
         end.y = start.y;
         end.x = start.x;
     }

@@ -24,7 +24,7 @@ Renderer::Renderer() {
 
     doc_text_color = {235, 235, 235, 255};
     editor_bg_color = {49, 45, 55, 255};
-    cursor_color = {0, 255, 255, 255};
+    cursor_color = {0, 225, 255, 255};
     line_number_color = {255, 255, 255, 100};
 
     SDL_SetRenderDrawColor(renderer, 
@@ -268,76 +268,6 @@ void Renderer::render_text_selection(Vec2 start, Vec2 end, File &file) {
     } else {
         render_select_line_text(LEFT_BORDER, LEFT_BORDER + 5, lower.y);
     }
-
-    /*
-    if (end.y == start.y) {
-        if (start.x < end.x) {
-            start_px = file.lines[start.y].cs[start.x].start_pixel.x;
-            end_px = file.lines[end.y].cs[end.x].start_pixel.x;
-            if (end.x == file.lines[end.y].cs.size()) {
-                end.x = end.x - 1;
-                end_px = file.lines[end.y].cs[end.x].end_pixel.x;
-            }
-        } else if (start.x > end.x) {
-            start_px = file.lines[end.y].cs[end.x].start_pixel.x;
-            end_px = file.lines[start.y].cs[start.x].start_pixel.x;
-            if (start.x == file.lines[start.y].cs.size()) {
-                start.x = start.x - 1;
-                end_px = file.lines[start.y].cs[start.x].end_pixel.x;
-            }
-        }
-        render_select_line_text(start_px, end_px, start.y);
-    } else if (end.y > start.y) {
-        const Line &line = file.lines[start.y];
-        start_px = line.cs[start.x].start_pixel.x;
-        end_px = line.cs[line.cs.size()-1].end_pixel.x;
-        if (start.x == line.cs.size()) {
-            start_px = line.cs[line.cs.size()-1].end_pixel.x;
-        }
-        render_select_line_text(start_px, end_px, start.y);
-
-        for (int i = start.y + 1; i < end.y; ++i) {
-            if (file.lines[i].cs.size() == 0) {
-                continue;
-            }
-            end_px = file.lines[i].cs[file.lines[i].cs.size() - 1].end_pixel.x;
-            render_select_line_text(LEFT_BORDER, end_px, i);
-        }
-
-        end_px = file.lines[end.y].cs[end.x].start_pixel.x;
-        if (end.x == file.lines[end.y].cs.size()) {
-            end.x = end.x - 1;
-            end_px = file.lines[end.y].cs[end.x].end_pixel.x;
-        }
-        render_select_line_text(LEFT_BORDER, end_px, end.y);
-
-    } else {
-        const Line &line = file.lines[end.y];
-        start_px = line.cs[end.x].start_pixel.x;
-        end_px = line.cs[line.cs.size()-1].end_pixel.x;
-        if (end.x == file.lines[end.y].cs.size()) {
-            end.x = end.x - 1;
-            start_px = line.cs[end.x].end_pixel.x;
-        }
-        render_select_line_text(start_px, end_px, end.y);
-
-        for (int i = end.y + 1; i < start.y; ++i) {
-            if (file.lines[i].cs.size() == 0) {
-                continue;
-            }
-            const Line &line = file.lines[i];
-            start_px = LEFT_BORDER;
-            end_px = line.cs[line.cs.size()-1].end_pixel.x;
-            render_select_line_text(start_px, end_px, i);
-        }
-        start_px = LEFT_BORDER;
-        end_px = file.lines[start.y].cs[start.x].start_pixel.x;
-        if (start.x == file.lines[start.y].cs.size()) {
-            end_px = file.lines[start.y].cs[file.lines[start.y].cs.size() - 1].end_pixel.x;
-        }
-        render_select_line_text(start_px, end_px, start.y);
-    }
-    */
 }
 
 void Renderer::render_select_line_text(int start_x, int end_x, int line) {
@@ -386,6 +316,40 @@ void Renderer::render_cursor(Vec2& c, File& file) {
     SDL_Rect r {loc.x, TOP_BORDER + (c.y * LINE_HEIGHT), 10, LINE_HEIGHT};
 
     SDL_RenderDrawRect(renderer, &r);
+}
+
+void Renderer::invert_texture_colors(SDL_Texture *t) {
+    void* pixels;
+    int pitch;
+
+    if (SDL_LockTexture(t, nullptr, &pixels, &pitch) != 0) {
+        Utilities::sdl_error();
+    }
+
+    Uint32 format;
+    int access, w, h;
+    SDL_QueryTexture(t, &format, &access, &w, &h);
+
+    SDL_PixelFormat* map = SDL_AllocFormat(format);
+
+    Uint32* pixelData = static_cast<Uint32*>(pixels);
+    int pixelCount = (pitch / 4) * h;
+    for (int i = 0; i < pixelCount; ++i) {
+        Uint32 pixel = pixelData[i];
+
+        Uint8 r, g, b, a;
+        SDL_GetRGBA(pixel, map, &r, &g, &b, &a);
+
+        r = 255 - r;
+        g = 255 - g;
+        b = 255 - b;
+
+        pixelData[i] = SDL_MapRGBA(map, r, g, b, a);
+    }
+
+    SDL_UnlockTexture(t);
+
+    SDL_FreeFormat(map);
 }
 
 void Renderer::render_present() {
