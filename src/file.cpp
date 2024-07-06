@@ -213,26 +213,21 @@ void File::delete_selection(Vec2 &start, Vec2 &end) {
         lower = start;
     }
 
-    Line &l = lines[upper.y];
-    if (!l.cs.empty()) {
+    // need to go from bottom up to prevent shifting indeces
+
+    // bottom line of selection (or just selection when only one line)
+    Line &ll = lines[lower.y];
+    if (!ll.cs.empty()) {
         if (upper.y == lower.y) {
-            l.remove_sub_line(upper.x, lower.x);
+            ll.remove_sub_line(upper.x, lower.x);
         } else {
-            l.remove_sub_line(upper.x, l.cs.size());
+            ll.remove_sub_line(0, lower.x);
         }
     }
 
-    for (int i = upper.y + 1; i < lower.y; ++i) {
-        lines.erase(lines.begin() + i);
-        --i;
-        --lower.y;
-    }
-
-    Line &ll = lines[lower.y];
-    if (!ll.cs.empty() && upper.y != lower.y) {
-        ll.remove_sub_line(0, lower.x);
-    } 
-    if (ll.cs.empty()) {
+    // don't remove the line if it's the only line in the selection
+    // editor breaks if file has zero lines
+    if (ll.cs.empty() && upper.y != lower.y) {
         if (lower.y == lines.size()) {
             lines.pop_back();
         } else {
@@ -240,12 +235,28 @@ void File::delete_selection(Vec2 &start, Vec2 &end) {
         }
     }
 
-    if (start.y <= end.y) {
-        end.y = start.y;
-        end.x = start.x;
+    // erase everything between the start and end sections of the selection
+    for (int i = lower.y - 1; i > upper.y; --i) {
+        lines.erase(lines.begin() + i);
     }
+
+    // if there is a distinc upper line, delete it
+    if (upper.y != lower.y) {
+        Line &l = lines[upper.y];
+        if (!l.cs.empty()) {
+            l.remove_sub_line(upper.x, l.cs.size());
+        }
+    }
+    
+    if (start.y <= end.y) {
+        if (start.x <= end.x) {
+            end.x = start.x;
+            end.y = start.y;
+        }
+    }
+    
     start.x = end.x;
-    start.y = end.y;    
+    start.y = end.y;  
 }
 
 void File::cut(Vec2 &start, Vec2 &end) {

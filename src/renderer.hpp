@@ -71,7 +71,6 @@ private:
     void render_texture(SDL_Texture* texture, const SDL_Rect& rect);// file editor functions 
     void render_char(char c, int x, int y);
     void render_file_line_number(int line);
-    void invert_texture_colors(SDL_Texture *t);
 
     int tab_size;
 

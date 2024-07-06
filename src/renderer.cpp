@@ -318,40 +318,6 @@ void Renderer::render_cursor(Vec2& c, File& file) {
     SDL_RenderDrawRect(renderer, &r);
 }
 
-void Renderer::invert_texture_colors(SDL_Texture *t) {
-    void* pixels;
-    int pitch;
-
-    if (SDL_LockTexture(t, nullptr, &pixels, &pitch) != 0) {
-        Utilities::sdl_error();
-    }
-
-    Uint32 format;
-    int access, w, h;
-    SDL_QueryTexture(t, &format, &access, &w, &h);
-
-    SDL_PixelFormat* map = SDL_AllocFormat(format);
-
-    Uint32* pixelData = static_cast<Uint32*>(pixels);
-    int pixelCount = (pitch / 4) * h;
-    for (int i = 0; i < pixelCount; ++i) {
-        Uint32 pixel = pixelData[i];
-
-        Uint8 r, g, b, a;
-        SDL_GetRGBA(pixel, map, &r, &g, &b, &a);
-
-        r = 255 - r;
-        g = 255 - g;
-        b = 255 - b;
-
-        pixelData[i] = SDL_MapRGBA(map, r, g, b, a);
-    }
-
-    SDL_UnlockTexture(t);
-
-    SDL_FreeFormat(map);
-}
-
 void Renderer::render_present() {
     SDL_RenderPresent(renderer);
 }

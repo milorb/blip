@@ -111,8 +111,9 @@ void Editor::input() {
                 break;
             }
             case SDL_TEXTINPUT: {
-                if (select && state == SELECT) {
+                if (select) {
                     select = false;
+                    file.delete_selection(selection_start, cursor);
                     reset_state(EDIT);
                 }
                 if (state == EDIT) {
@@ -120,14 +121,7 @@ void Editor::input() {
                 }
                 break;
             }
-            case SDL_KEYDOWN: {
-                if (e.key.keysym.sym != SDLK_LSHIFT 
-                        && e.key.keysym.sym != SDLK_RSHIFT && select 
-                        && state != SELECT && e.key.keysym.sym != MACOS_LEFT_COMMAND
-                        && e.key.keysym.sym != MACOS_RIGHT_COMMAND
-                        && e.key.keysym.sym != SDLK_BACKSPACE) {
-                    select = false;
-                } 
+            case SDL_KEYDOWN: { 
                 if (state == COMMAND) {
                     process_command(e.key.keysym.sym);
                 }
@@ -164,33 +158,42 @@ void Editor::render() {
 void Editor::process_command(SDL_Keycode command_char) {
     switch(command_char) {
         case SDLK_c: {
-            file.copy(selection_start, cursor);
-            reset_state(EDIT);
+            if (select) {
+                file.copy(selection_start, cursor);
+                select = false;
+                reset_state(EDIT);
+            }
             break;
-        }
+        } // copy 
         case SDLK_v: {
+            if (select) {
+                file.delete_selection(selection_start, cursor);
+                select = false;
+            }
             file.paste(cursor);
             break;
-        }
+        } // paste
         case SDLK_x: {
-            file.cut(selection_start, cursor);
-            reset_state(EDIT);
+            if (select) {
+                file.cut(selection_start, cursor);
+                select = false;
+                reset_state(EDIT);
+            }
             break;
-        }
+        } // cut
         case SDLK_r: {
-            file.open_file(file.file_name);
             reset_state(EDIT);
             break;
-        }
+        } // refresh
         case SDLK_s: {
             if (file.is_open()) file.save_file();
             reset_state(prev_state);
             break;
-        } 
+        } // save
         case SDLK_o: {
             open_query();
             break;
-        }
+        } // open
         case SDLK_n: {
             std::cout << "creating new file..." << std::endl;
             if (file.is_open()) file.save_file();
@@ -198,11 +201,11 @@ void Editor::process_command(SDL_Keycode command_char) {
             file.new_file();
             reset_state(EDIT);
             break;
-        }
+        } // new file
         case SDLK_q: {
             update_state(EXIT);
             break;  
-        }
+        } // quit
         default:
             break;
     }
@@ -217,8 +220,8 @@ void Editor::process_key_down_event(SDL_Keycode kc) {
             if (state == EDIT || state == SELECT) {
                 if (!select && state == EDIT) {
                     selection_start = cursor;
+                    select = true;
                 }
-                select = true;
                 update_state(SELECT);
             }
             break;
@@ -227,8 +230,8 @@ void Editor::process_key_down_event(SDL_Keycode kc) {
             if (state == EDIT || state == SELECT) {
                 if (!select && state == EDIT) {
                     selection_start = cursor;
-                } 
-                select = true;     
+                    select = true; 
+                }     
                 update_state(SELECT);
             }
             break;
@@ -255,6 +258,10 @@ void Editor::process_key_down_event(SDL_Keycode kc) {
             break;
         }
         case SDLK_RETURN: {
+            if (select) {
+                file.delete_selection(selection_start, cursor);
+                select = false;
+            }
             file.insert_line(cursor);
             break;
         }
@@ -262,6 +269,8 @@ void Editor::process_key_down_event(SDL_Keycode kc) {
             move_cursor(1, 0);
             if (state == SELECT) {
                 select = true;;
+            } else {
+                select = false;
             }
             break;
         }
@@ -269,6 +278,8 @@ void Editor::process_key_down_event(SDL_Keycode kc) {
             move_cursor(-1,0);
             if (state == SELECT) {
                 select = true;;
+            } else {
+                select = false;
             }
             break;
         }
@@ -276,6 +287,8 @@ void Editor::process_key_down_event(SDL_Keycode kc) {
             move_cursor(0,-1);
             if (state == SELECT) {
                 select = true;;
+            } else {
+                select = false;
             }
             break;
         }
@@ -283,6 +296,8 @@ void Editor::process_key_down_event(SDL_Keycode kc) {
             move_cursor(0,1);
             if (state == SELECT) {
                 select = true;;
+            } else {
+                select = false;
             }
             break;
         }
