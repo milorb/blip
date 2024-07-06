@@ -4,6 +4,10 @@
 #include <iostream>
 #include "SDL.h"
 
+
+#define MACOS_LEFT_COMMAND        1073742051
+#define MACOS_RIGHT_COMMAND       1073742055
+
 struct Vec2 {
     Vec2() 
     : x(0), y(0) {};

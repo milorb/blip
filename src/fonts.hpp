@@ -17,7 +17,7 @@ public:
     Fonts();
     ~Fonts();
 
-    std::unordered_map<std::string, TTF_Font*> fonts;
+    int get_char_advance(char c, TTF_Font* f);
 };
 
 #endif
