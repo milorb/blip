@@ -5,15 +5,16 @@ Editor::Editor() {
     auto now = std::chrono::system_clock::now();
     std::time_t now_t = std::chrono::system_clock::to_time_t(now);
     time = std::localtime(&now_t);
-
-
-
+    // start with a new file so that renderer can start properly
     file.new_file();
     SDL_StartTextInput();
     run();
     SDL_StopTextInput();
 }
 
+/* used for state management 
+ * states are differentiated by what effects a key press will have in it 
+ */
 void Editor::update_state(E_State state_new) {
     if (state_new != state) {
         prev_state = state;
@@ -26,6 +27,9 @@ void Editor::reset_state(E_State state_new) {
     prev_state = state_new;
 }
 
+/*
+ * main loop of the editor!
+ */
 void Editor::run() {
     reset_state(EDIT);
 
@@ -41,9 +45,60 @@ void Editor::run() {
     }
 }
 
+void Editor::input() {
+    SDL_Event e;
+    while (SDL_PollEvent(&e)) {
+        switch (e.type) {
+            case SDL_QUIT: {
+                update_state(EXIT);
+                break;
+            }
+            case SDL_WINDOWEVENT: {
+                if (e.window.event == SDL_WINDOWEVENT_RESIZED) {
+                    r.WINDOW_WIDTH = e.window.data1;
+                    r.WINDOW_HEIGHT = e.window.data2;
+                }
+                break;
+            } // resizing the sdl window
+            case SDL_TEXTINPUT: {
+                if (select) {
+                    select = false;
+                    file.delete_selection(selection_start, cursor);
+                    reset_state(EDIT);
+                } // replace selection with the input character
+                if (state == SELECT) {
+                    reset_state(EDIT);
+                } // switch back to edit state
+                if (state == EDIT) {
+                    file.place_char(e.text.text[0], cursor);
+                }
+                break;
+            }
+            case SDL_KEYDOWN: { 
+                if (state == COMMAND) {
+                    process_command(e.key.keysym.sym);
+                } // process the key pressed while holding cmd
+                process_key_down_event(e.key.keysym.sym);
+                break;
+            }
+            case SDL_KEYUP: {
+                process_key_up_event(e.key.keysym.sym);
+                break;
+            }
+            default:
+                break;
+        }
+    }
+}
+
+/*
+ * y/n prompt presented on cmd q;
+ * can also exit again to quit
+ */
 void Editor::exit_query() {
     bool selected = false;
     SDL_Event e;
+    // freeze input while the prompt is up
     SDL_StopTextInput();
     while (!selected) {
         while (SDL_PollEvent(&e)) {
@@ -65,6 +120,12 @@ void Editor::exit_query() {
     SDL_StartTextInput();
 }
 
+/*
+ * lock into this query upon cmd o
+ * press enter confirm selection
+ * creates a new file with the name
+ *     if existing name isn't found
+ */
 void Editor::open_query() {
     bool selected = false;
     SDL_Event e;
@@ -96,65 +157,21 @@ void Editor::open_query() {
     }
 }
 
-void Editor::input() {
-    SDL_Event e;
-    while (SDL_PollEvent(&e)) {
-        switch (e.type) {
-            case SDL_QUIT: {
-                update_state(EXIT);
-                break;
-            }
-            case SDL_WINDOWEVENT: {
-                if (e.window.event == SDL_WINDOWEVENT_RESIZED) {
-                    r.WINDOW_WIDTH = e.window.data1;
-                    r.WINDOW_HEIGHT = e.window.data2;
-                }
-                break;
-            }
-            case SDL_TEXTINPUT: {
-                if (select) {
-                    select = false;
-                    file.delete_selection(selection_start, cursor);
-                    reset_state(EDIT);
-                }
-                if (state == SELECT) {
-                    reset_state(EDIT);
-                }
-                if (state == EDIT) {
-                    file.place_char(e.text.text[0], cursor);
-                }
-                break;
-            }
-            case SDL_KEYDOWN: { 
-                if (state == COMMAND) {
-                    process_command(e.key.keysym.sym);
-                }
-                process_key_down_event(e.key.keysym.sym);
-                break;
-            }
-            case SDL_KEYUP: {
-                process_key_up_event(e.key.keysym.sym);
-                break;
-            }
-            default:
-                break;
-        }
-    }
-}
 
 void Editor::render() {
     r.render_clear();
     if (file.is_open()) {
         if (select) {
+            // renders the selection rectangles made while holding shift
             r.render_text_selection(selection_start, cursor, file);
         } else {
+            // renders the dark rectangle, contrasting text on current line
             r.render_line_select(cursor.y);
         }
         r.render_file_contents(file);
     }
-    //if (frame_count % 180 >= 90) {
+    // render & update cursor, should probably divide this functionality
     r.render_cursor(cursor, file, frame_count);
-    //}
     r.render_status_bar(e_sstrings[state], cursor);
     r.render_present();
 }
@@ -170,6 +187,7 @@ void Editor::process_command(SDL_Keycode command_char) {
             break;
         } // copy 
         case SDLK_v: {
+            // delete selected area to be replaced
             if (select) {
                 file.delete_selection(selection_start, cursor);
                 select = false;
@@ -199,7 +217,6 @@ void Editor::process_command(SDL_Keycode command_char) {
             break;
         } // open
         case SDLK_n: {
-            std::cout << "creating new file..." << std::endl;
             if (file.is_open()) file.save_file();
             cursor = Vec2(0,0);
             file.new_file();
@@ -221,7 +238,8 @@ void Editor::process_key_down_event(SDL_Keycode kc) {
             break;
         }
         case SDLK_LSHIFT: {
-            if (state == EDIT || state == SELECT) {
+            // command overrides starting a selection
+            if (state != COMMAND) {
                 if (!select && state == EDIT) {
                     selection_start = cursor;
                 }
@@ -230,7 +248,7 @@ void Editor::process_key_down_event(SDL_Keycode kc) {
             break;
         }
         case SDLK_RSHIFT: {
-            if (state == EDIT || state == SELECT) {
+            if (state != COMMAND) {
                 if (!select && state == EDIT) {
                     selection_start = cursor;
                 }     
@@ -247,6 +265,9 @@ void Editor::process_key_down_event(SDL_Keycode kc) {
             break;
         }
         case SDLK_TAB: {
+            if (select) {
+              file.delete_selection(selection_start, cursor);
+            }
             file.place_char('\t', cursor);
             break;
         }
@@ -331,30 +352,27 @@ void Editor::process_key_up_event(SDL_Keycode kc) {
     }
 }
 
+/*
+ * takes the offset of the cursor
+ * i.ie x = 1, y = 0 moves the cursir 1 to the right
+ */
 void Editor::move_cursor(int x, int y) {
     Vec2 temp(cursor.x + x, cursor.y + y);
-    //std::cout << "moving cursor from " << cursor.x << " " << cursor.y 
-            //<< " to " << temp.x << " " << temp.y << std::endl;;
     if (!file.pos_in_bounds(temp)) {
-        if (y > 0 && temp.y < file.lines.size()) {
-            //std::cout << "down case" << std::endl;
-            cursor.x = file.lines[temp.y].cs.size();
+        if (y > 0 && temp.y < file.lines.size()) { // on moving down
+            cursor.x = file.lines[temp.y].cs.size(); // move to end of next line
             ++cursor.y;
-            //std::cout << "cursor now at " << cursor.x << " " << cursor.y << std::endl;
             return;
-        } else if (y < 0 && temp.y >= 0) {
-            //std::cout << "up case" << std::endl;
-            cursor.x = file.lines[temp.y].cs.size();
+        } else if (y < 0 && temp.y >= 0) { // on moving up
+            cursor.x = file.lines[temp.y].cs.size(); // move to end of prev line
             --cursor.y;
             return;
-        } else if (x > 0 && temp.y + 1 < file.lines.size()) {
-            //std::cout << "right case" << std::endl;
-            cursor.x = 0;
+        } else if (x > 0 && temp.y + 1 < file.lines.size()) { // on moving right past line
+            cursor.x = 0; // move to start of next line
             ++cursor.y;
             return;
-        } else if (x < 0 && temp.y - 1 >= 0) {
-            //std::cout << "left case" << std::endl;
-            cursor.x = file.lines[temp.y - 1].cs.size();
+        } else if (x < 0 && temp.y - 1 >= 0) { // on moving left past 0
+            cursor.x = file.lines[temp.y - 1].cs.size();  // move to end of prev line
             --cursor.y;
             return;
         } else {

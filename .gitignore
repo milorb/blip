@@ -2,6 +2,7 @@
 .AppleDouble
 .LSOverride
 
+src/*.py
 .vscode/
 .vscode/*
 build/

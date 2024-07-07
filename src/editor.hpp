@@ -10,24 +10,22 @@
 #include "renderer.hpp"
 #include "states.hpp"
 
-
 /**
  * Handles initializing the SDL window
  * Gathers inputs
  * Rendering endpoint
-*/
-
+ */
 
 class Editor {
-public:
+ public:
   Editor();
   ~Editor();
 
-private:
+ private:
   void run();
   void input();
   void render();
-  
+
   void process_key_down_event(SDL_Keycode);
   void process_key_up_event(SDL_Keycode);
   void process_command(SDL_Keycode);
@@ -35,7 +33,7 @@ private:
   void reset_state(E_State);
   void cleanup();
   void move_cursor(int x, int y);
-  int get_frame_count() {return frame_count;};
+  int get_frame_count() { return frame_count; };
 
   void exit_query();
   void open_query();
