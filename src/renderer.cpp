@@ -27,12 +27,27 @@ Renderer::Renderer() {
     cursor_color = {0, 225, 255, 255};
     line_number_color = {255, 255, 255, 100};
 
+    cursor_position = Vec2(LEFT_BORDER, TOP_BORDER);
+
     SDL_SetRenderDrawColor(renderer, 
                 editor_bg_color.r, 
                 editor_bg_color.g, 
                 editor_bg_color.b, 
                 editor_bg_color.a);
     SDL_RenderClear(renderer);
+}
+
+void Renderer::update() {
+    if (cursor_position.x + 14 > WINDOW_WIDTH + camera_offset.x) {
+        camera_offset.x += 10;
+    } else if (cursor_position.x < LEFT_BORDER + camera_offset.x) {
+        camera_offset.x -= 10;
+    }
+    if (cursor_position.y + (LINE_HEIGHT * 2) > WINDOW_HEIGHT + camera_offset.y) {
+        camera_offset.y += LINE_HEIGHT;
+    } else if (cursor_position.y < TOP_BORDER + camera_offset.y) {
+        camera_offset.y -= LINE_HEIGHT;
+    }
 }
 
 void Renderer::render_clear() {
@@ -153,13 +168,13 @@ void Renderer::render_file_character(const Character& character, int row, int co
     }
 
     if (character.t != TAB) {
-        SDL_Rect rect = {penx, peny, 
+        SDL_Rect rect = {penx - camera_offset.x, peny - camera_offset.y, 
                         (int)(gd.w * text_scale_factor), 
                         (int)(gd.h * text_scale_factor)};   
         SDL_RenderCopy(renderer, gd.texture, nullptr, &rect);
         penx += gd.advance;
     } else {
-        SDL_Rect rect = {penx, peny, 
+        SDL_Rect rect = {penx - camera_offset.x, peny - camera_offset.y, 
                         (int)(gd.w * text_scale_factor), 
                         (int)(gd.h * text_scale_factor)};
         for (int i = 0; i < tab_size; ++i) {
@@ -169,11 +184,17 @@ void Renderer::render_file_character(const Character& character, int row, int co
     }
 
     if (character.t != TAB) {
-        file.lines[row].cs[col].start_pixel = Vec2(penx - gd.advance, peny);
+        file.lines[row].cs[col].start_pixel = Vec2(
+            penx - gd.advance, 
+            peny);
     } else {
-        file.lines[row].cs[col].start_pixel = Vec2(penx - (gd.advance * tab_size), peny);
+        file.lines[row].cs[col].start_pixel = Vec2(
+            penx - (gd.advance * tab_size), 
+            peny);
     }
-    file.lines[row].cs[col].end_pixel = Vec2(penx - KERNING_MODIFIER / 2, peny);
+    file.lines[row].cs[col].end_pixel = Vec2((
+        penx) - (KERNING_MODIFIER / 2), 
+        peny);
 }
 
 void Renderer::render_file_line(const Line& line, int row, File& file) {
@@ -198,7 +219,7 @@ void Renderer::render_file_line_number(int i) {
     SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
     if (!texture) Utilities::sdl_error();
 
-    SDL_Rect rect = {LEFT_BORDER - 8 - (int)(w * text_scale_factor), TOP_BORDER + i * LINE_HEIGHT, 
+    SDL_Rect rect = {LEFT_BORDER - 8 - (int)(w * text_scale_factor), TOP_BORDER + (i * LINE_HEIGHT) - camera_offset.y, 
         (int)(surface->w * text_scale_factor), (int)(surface->h * text_scale_factor)};
 
     SDL_RenderCopy(renderer, texture, nullptr, &rect);
@@ -212,17 +233,22 @@ void Renderer::render_file_contents(File& file) {
     SDL_SetRenderDrawColor(renderer, 20,20,20,255);
     SDL_RenderDrawLine(renderer, LEFT_BORDER - 4, 0, LEFT_BORDER - 2, WINDOW_HEIGHT);
 
-    int line_num = 0;
-    for (Line l : file.lines) {
-        render_file_line_number(line_num);
-        render_file_line(l, line_num, file);
-        ++line_num;
+    int num_lines = std::min((int)file.lines.size(), WINDOW_HEIGHT / LINE_HEIGHT);
+
+    int offset = abs(camera_offset.y / LINE_HEIGHT);
+
+    for (int i = 0; i < num_lines; ++i) {
+        Line l = file.lines[i + offset];
+        render_file_line_number(i + offset);
+        render_file_line(l, i + offset, file);
+
+        std::cout << i + offset << std::endl;
     }
 }
 
 void Renderer::render_line_select(int row) {
     SDL_SetRenderDrawColor(renderer, 30, 30, 30, 20);
-    SDL_Rect rect = {LEFT_BORDER - 4, TOP_BORDER + (row * LINE_HEIGHT), WINDOW_WIDTH - LEFT_BORDER + 4, LINE_HEIGHT + 4};
+    SDL_Rect rect = {LEFT_BORDER - 4, TOP_BORDER + (row * LINE_HEIGHT) - camera_offset.y, WINDOW_WIDTH - LEFT_BORDER + 4, LINE_HEIGHT + 4};
     SDL_RenderFillRect(renderer, &rect);
 }
 
@@ -295,15 +321,15 @@ void Renderer::render_select_line_text(int start_x, int end_x, int line) {
     if (start_x < end_x) {
         w = end_x - start_x;
         rect = {
-            start_x, 
-            TOP_BORDER + (line * LINE_HEIGHT), 
+            start_x - camera_offset.x, 
+            TOP_BORDER + (line * LINE_HEIGHT) - camera_offset.y, 
             w, 
             LINE_HEIGHT};
     } else if (start_x > end_x) {
         w = end_x - start_x;
         rect = {
-            end_x, 
-            TOP_BORDER + (line * LINE_HEIGHT), 
+            end_x - camera_offset.x, 
+            TOP_BORDER + (line * LINE_HEIGHT) - camera_offset.y, 
             w, 
             LINE_HEIGHT};
     }
@@ -314,24 +340,31 @@ void Renderer::render_select_line_text(int start_x, int end_x, int line) {
     SDL_SetRenderDrawBlendMode(renderer, SDL_BlendMode::SDL_BLENDMODE_NONE);
 }
 
-void Renderer::render_cursor(Vec2& c, File& file) { 
-    Vec2 loc;
-    
-    if (c.x == 0 || file.lines[c.y].cs.size() == 0) {
-        loc = Vec2(LEFT_BORDER, TOP_BORDER + (c.y * LINE_HEIGHT));
+void Renderer::render_cursor(Vec2& c, File& file, int frame) { 
+    Vec2 dif = Vec2(c.x - cursor_idxs.x, c.y - cursor_idxs.y);
+
+    if (c.x == 0) {
+        if (file.lines[c.y].cs.empty()) {
+            cursor_position.x = LEFT_BORDER;  
+        } else {
+             cursor_position.x = file.lines[c.y].cs[0].start_pixel.x;
+        }
+    } else if (c.x == file.lines[c.y].cs.size()) {
+        cursor_position.x =  file.lines[c.y].cs[c.x - 1].end_pixel.x;
     } else {
-        loc = file.lines[c.y].cs[c.x - 1].end_pixel;
+        cursor_position.x = file.lines[c.y].cs[c.x].start_pixel.x;
     }
 
-    SDL_SetRenderDrawColor(renderer, 
-                            cursor_color.r, 
-                            cursor_color.g, 
-                            cursor_color.b, 
-                            cursor_color.a);
-                            
-    SDL_Rect r {loc.x, TOP_BORDER + (c.y * LINE_HEIGHT), 10, LINE_HEIGHT};
+    cursor_position.y += (dif.y * LINE_HEIGHT);
+    if (frame % 180 >= 90) {
+        SDL_SetRenderDrawColor(renderer, cursor_color.r, cursor_color.g, cursor_color.b, cursor_color.a);
+        SDL_Rect r {cursor_position.x - camera_offset.x, cursor_position.y - camera_offset.y, 10, LINE_HEIGHT};
+        SDL_RenderDrawRect(renderer, &r);
+    }
 
-    SDL_RenderDrawRect(renderer, &r);
+
+    cursor_idxs.x = c.x;
+    cursor_idxs.y = c.y;
 }
 
 void Renderer::render_present() {

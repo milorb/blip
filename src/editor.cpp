@@ -31,6 +31,7 @@ void Editor::run() {
 
     while (state != EXIT) {
         input();
+        r.update();
         render();
 
         if (state == EXIT) {
@@ -151,9 +152,9 @@ void Editor::render() {
         }
         r.render_file_contents(file);
     }
-    if (frame_count % 180 >= 90) {
-        r.render_cursor(cursor, file);
-    }
+    //if (frame_count % 180 >= 90) {
+    r.render_cursor(cursor, file, frame_count);
+    //}
     r.render_status_bar(e_sstrings[state], cursor);
     r.render_present();
 }

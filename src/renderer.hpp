@@ -38,6 +38,8 @@ class Renderer {
 public:
     Renderer();
     ~Renderer();
+
+    void update();
     void render_clear();
     void render_present();
 
@@ -45,7 +47,7 @@ public:
     void render_rectangle(const Vec2 &pos, const Vec2 &dims, SDL_Color &color, bool filled);
     
     void render_file_contents(File& f);
-    void render_cursor(Vec2& c, File& f);
+    void render_cursor(Vec2& c, File& f, int frame);
     void render_line_select(int row);
     void render_text_selection(Vec2 start, Vec2 end, File &file);
 
@@ -63,6 +65,9 @@ public:
     int WINDOW_WIDTH = 640;
     int  WINDOW_HEIGHT = 480;
     TTF_Font *f;
+
+    Vec2 camera_offset = Vec2(0, 0);
+    Vec2 cursor_position;
 
 private:
     void render_file_character(const Character& character, int row, int col, 
@@ -86,6 +91,9 @@ private:
     SDL_Color line_number_color;
 
     std::unordered_map<char, GlyphData> glyph_cache;
+
+    
+    Vec2 cursor_idxs = Vec2(0, 0);
 
     float text_scale_factor = 1.0f;
 

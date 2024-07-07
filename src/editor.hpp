@@ -50,7 +50,7 @@ private:
 
   std::tm* time;
   Renderer r;
-  Vec2 cursor;
+  Vec2 cursor = Vec2(0, 0);
   File file;
 };
 
