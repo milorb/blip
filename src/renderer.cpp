@@ -233,16 +233,13 @@ void Renderer::render_file_contents(File& file) {
     SDL_SetRenderDrawColor(renderer, 20,20,20,255);
     SDL_RenderDrawLine(renderer, LEFT_BORDER - 4, 0, LEFT_BORDER - 2, WINDOW_HEIGHT);
 
-    int num_lines = std::min((int)file.lines.size(), WINDOW_HEIGHT / LINE_HEIGHT);
-
     int offset = abs(camera_offset.y / LINE_HEIGHT);
+    int num_lines = std::min((int)file.lines.size() - offset, WINDOW_HEIGHT / LINE_HEIGHT);
 
     for (int i = 0; i < num_lines; ++i) {
         Line l = file.lines[i + offset];
         render_file_line_number(i + offset);
         render_file_line(l, i + offset, file);
-
-        std::cout << i + offset << std::endl;
     }
 }
 
@@ -265,7 +262,6 @@ void Renderer::render_text_selection(Vec2 start, Vec2 end, File &file) {
     }
 
     // NOTE: the x_cootds.y value refers to the rightmost pixel of a selection
-
     // render the top (or only) line select
     Line l = file.lines[upper.y];
     if (!l.cs.empty()) {
@@ -361,7 +357,6 @@ void Renderer::render_cursor(Vec2& c, File& file, int frame) {
         SDL_Rect r {cursor_position.x - camera_offset.x, cursor_position.y - camera_offset.y, 10, LINE_HEIGHT};
         SDL_RenderDrawRect(renderer, &r);
     }
-
 
     cursor_idxs.x = c.x;
     cursor_idxs.y = c.y;
