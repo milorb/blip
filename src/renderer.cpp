@@ -229,6 +229,7 @@ void Renderer::render_line_select(int row) {
 void Renderer::render_text_selection(Vec2 start, Vec2 end, File &file) {
     Vec2 upper;
     Vec2 lower;
+    // need to find the highest idx for top-down rendering
     if (start.y <= end.y) {
         upper = start;
         lower = end;
@@ -237,24 +238,36 @@ void Renderer::render_text_selection(Vec2 start, Vec2 end, File &file) {
         lower = start;
     }
 
+    // NOTE: the x_cootds.y value refers to the rightmost pixel of a selection
+
+    // render the top (or only) line select
     Line l = file.lines[upper.y];
     if (!l.cs.empty()) {
         if (upper.y == lower.y) {
             Vec2 x_coords = l.get_subline_pxs(upper.x, lower.x);
+            if (lower.x == l.cs.size() && (upper.x != lower.x)) {
+                x_coords.y += 5;
+            }
             render_select_line_text(x_coords.x, x_coords.y, upper.y);
             return;
         } else {
             Vec2 x_coords = l.get_subline_pxs(upper.x, l.cs.size());
-            render_select_line_text(x_coords.x, x_coords.y, upper.y);
+            if (upper.x == l.cs.size()) {
+                int x = (l.cs.end() - 1)->end_pixel.x;
+                render_select_line_text(x, x + 5, upper.y);
+            } else {
+                render_select_line_text(x_coords.x, x_coords.y + 5, upper.y);
+            }
         }
-    } else {
-         render_select_line_text(LEFT_BORDER, LEFT_BORDER + 5, upper.y);
+    } else if (upper.y != lower.y) {
+        // render small selection for when the line is empty
+        render_select_line_text(LEFT_BORDER, LEFT_BORDER + 5, upper.y);
     }
     for (int i = upper.y + 1; i < lower.y; ++i) {
         l = file.lines[i];
         if (!l.cs.empty()) {
             Vec2 x_coords = l.get_subline_pxs(0, l.cs.size());
-            render_select_line_text(x_coords.x, x_coords.y, i);
+            render_select_line_text(x_coords.x, x_coords.y + 5, i);
         } else {
             render_select_line_text(LEFT_BORDER, LEFT_BORDER + 5, i);
         }
@@ -262,8 +275,11 @@ void Renderer::render_text_selection(Vec2 start, Vec2 end, File &file) {
 
     l = file.lines[lower.y];
 
-    if (!l.cs.empty()) {
+    if (!l.cs.empty() && upper.y != lower.y) {
         Vec2 x_coords = l.get_subline_pxs(0, lower.x);
+        if (lower.x == l.cs.size() && end.y > start.y) {
+            x_coords.y += 5;
+        }
         render_select_line_text(x_coords.x, x_coords.y, lower.y);
     } else {
         render_select_line_text(LEFT_BORDER, LEFT_BORDER + 5, lower.y);

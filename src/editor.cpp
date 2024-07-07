@@ -116,6 +116,9 @@ void Editor::input() {
                     file.delete_selection(selection_start, cursor);
                     reset_state(EDIT);
                 }
+                if (state == SELECT) {
+                    reset_state(EDIT);
+                }
                 if (state == EDIT) {
                     file.place_char(e.text.text[0], cursor);
                 }
@@ -220,7 +223,6 @@ void Editor::process_key_down_event(SDL_Keycode kc) {
             if (state == EDIT || state == SELECT) {
                 if (!select && state == EDIT) {
                     selection_start = cursor;
-                    select = true;
                 }
                 update_state(SELECT);
             }
@@ -230,7 +232,6 @@ void Editor::process_key_down_event(SDL_Keycode kc) {
             if (state == EDIT || state == SELECT) {
                 if (!select && state == EDIT) {
                     selection_start = cursor;
-                    select = true; 
                 }     
                 update_state(SELECT);
             }

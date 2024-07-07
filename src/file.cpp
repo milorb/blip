@@ -92,7 +92,6 @@ void File::place_char(char c, Vec2& pos) {
     ++pos.x;
 }
 
-
 void Line::insert_char(char c, int idx) {
     if (idx >= cs.size()) {
        cs.push_back(Character(c));
@@ -182,8 +181,6 @@ void File::insert_line(Vec2& cursor) {
         cursor.x = 0;
         return;
     }
-
-    //std::cout << "inserting line at " << cursor.x << cursor.y <<std::endl;
     if (cursor.x != lines[cursor.y].cs.size()) {
         ins = cur.get_sub_line(cursor.x, cur.cs.size());
         cur.remove_sub_line(cursor.x, cur.cs.size());
@@ -198,19 +195,20 @@ void File::insert_line(Vec2& cursor) {
     cursor.x = 0;
 }
 
-void File::delete_selection(Vec2 &start, Vec2 &end) {
+// modifies cursor and selection locations
+void File::delete_selection(Vec2 &selection_start, Vec2 &cursor) {
 
     Vec2 final;
     Vec2 upper;
     Vec2 lower;
-    if (start.y <= end.y) {
-        final = start;
-        upper = start;
-        lower = end;
+    if (selection_start.y <= cursor.y) {
+        final = selection_start;
+        upper = selection_start;
+        lower = cursor;
     } else {
-        final = end;
-        upper = end;
-        lower = start;
+        final = cursor;
+        upper = cursor;
+        lower = selection_start;
     }
 
     // need to go from bottom up to prevent shifting indeces
@@ -246,35 +244,39 @@ void File::delete_selection(Vec2 &start, Vec2 &end) {
         if (!l.cs.empty()) {
             l.remove_sub_line(upper.x, l.cs.size());
         }
-    }
-    
-    if (start.y <= end.y) {
-        if (start.x <= end.x) {
-            end.x = start.x;
-            end.y = start.y;
+        if (upper.y + 1 < lines.size()) {
+            l.append_line(lines[upper.y + 1]);
+            if (upper.y + 1 == lines.size() - 1) {
+                lines.pop_back();
+            } else {
+                lines.erase(lines.begin() + upper.y + 1);
+            }
         }
     }
     
-    start.x = end.x;
-    start.y = end.y;  
+    cursor.x = std::min(upper.x, (int)lines[upper.y].cs.size()); 
+    cursor.y = upper.y;
+
+    selection_start.x = cursor.x;
+    selection_start.y = cursor.y;
 }
 
-void File::cut(Vec2 &start, Vec2 &end) {
-    copy(start, end);
-    delete_selection(start, end);
+void File::cut(Vec2 &selection_start, Vec2 &cursor) {
+    copy(selection_start, cursor);
+    delete_selection(selection_start, cursor);
 }
 
-void File::copy(Vec2 &start, Vec2 &end) {
+void File::copy(Vec2 selection_start, Vec2 cursor) {
     std::string s = "";
 
     Vec2 upper;
     Vec2 lower;
-    if (start.y <= end.y) {
-        upper = start;
-        lower = end;
+    if (selection_start.y <= cursor.y) {
+        upper = selection_start;
+        lower = cursor;
     } else {
-        upper = end;
-        lower = start;
+        upper = cursor;
+        lower = selection_start;
     }
 
     Line l = lines[upper.y];
@@ -316,7 +318,7 @@ void File::copy(Vec2 &start, Vec2 &end) {
     pclose(pipe);
 }
 
-void File::paste(Vec2 &pos) {
+void File::paste(Vec2 &cursor) {
     FILE* pipe = popen("pbpaste", "r");
     if (pipe == nullptr) {
         std::cerr << "Failed to open pipe for pbpaste." << std::endl;
@@ -331,10 +333,9 @@ void File::paste(Vec2 &pos) {
 
     for (char c : copied_str) {
         if (c == '\n') {
-            insert_line(pos);
-            //lines[lines.size() - 1].cs.push_back(Character());
+            insert_line(cursor);
         } else {
-            place_char(c, pos);
+            place_char(c, cursor);
         }
     }
 }

@@ -56,9 +56,9 @@ public:
     void remove_char(Vec2& pos);
     void insert_line(Vec2 & pos);
 
-    void delete_selection(Vec2 &start, Vec2 &end);
-    void cut(Vec2 &start, Vec2 &end);
-    void copy(Vec2 &start, Vec2 &end);
+    void delete_selection(Vec2 &selection_start, Vec2 &cursor);
+    void cut(Vec2 &selection_start, Vec2 &cursor);
+    void copy(Vec2 selection_start, Vec2 cursor);
     void paste(Vec2 &pos);
 
     bool pos_in_bounds(Vec2& pos);
